@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Games Page</title>
+<style>
+body { text-align:center; font-family:Arial; background:#f0f8ff; }
+.game-box { border:2px solid black; margin:20px auto; padding:20px; width:90%; max-width:600px; border-radius:10px; background:white; }
+canvas { border:1px solid black; margin-top:10px; background:#000; touch-action: none; }
+button { padding:10px 20px; font-size:16px; margin-top:10px; cursor:pointer; }
+#progressBarContainer { width:80%; background:#ddd; margin:10px auto; height:20px; border-radius:10px; }
+#progressBar { width:0%; height:100%; background:#4caf50; border-radius:10px; }
+.controls { margin-top:10px; }
+.controls button { margin:5px; }
+.info { margin-top:10px; font-weight:bold; font-size:16px; }
+</style>
+</head>
+<body>
+
+<h1>My Games</h1>
+
+<div class="game-box">
+<h2>Snake Game</h2>
+<button onclick="startSnake()">Start Snake Game</button>
+<canvas id="snakeCanvas" width="400" height="400"></canvas>
+</div>
+
+<div class="game-box">
+<h2>Star Wars Game</h2>
+<div id="progressBarContainer"><div id="progressBar"></div></div>
+<button id="starBtn" disabled>Start Star Wars Game</button>
+<canvas id="starCanvas" width="600" height="400"></canvas>
+<div class="controls">
+<button onclick="moveLeft()">◀</button>
+<button onclick="moveRight()">▶</button>
+<button onclick="shoot()">Fire</button>
+</div>
+<div class="info">Score: <span id="scoreDisplay">0</span> | Lives: <span id="livesDisplay">3</span> | Level: <span id="levelDisplay">1</span></div>
+</div>
+
+<script>
+// ------------------- SNAKE GAME -------------------
+const snakeCanvas = document.getElementById("snakeCanvas");
+const snakeCtx = snakeCanvas.getContext("2d");
+let snakeInterval, snake, snakeDir, snakeFood, snakeRunning;
+let touchStartX=0, touchStartY=0;
+
+function startSnake() {
+    clearInterval(snakeInterval);
+    snake=[{x:200,y:200}];
+    snakeDir="RIGHT";
+    snakeFood={x:Math.floor(Math.random()*20)*20, y:Math.floor(Math.random()*20)*20};
+    snakeRunning=true;
+    document.addEventListener("keydown", changeSnakeDir);
+    snakeCanvas.addEventListener("touchstart", snakeTouchStart);
+    snakeCanvas.addEventListener("touchend", snakeTouchEnd);
+    snakeInterval=setInterval(drawSnake,100);
+}
+
+function changeSnakeDir(e){
+if(e.key==="ArrowUp"&&snakeDir!=="DOWN")snakeDir="UP";
+if(e.key==="ArrowDown"&&snakeDir!=="UP")snakeDir="DOWN";
+if(e.key==="ArrowLeft"&&snakeDir!=="RIGHT")snakeDir="LEFT";
+if(e.key==="ArrowRight"&&snakeDir!=="LEFT")snakeDir="RIGHT";
+}
+
+function snakeTouchStart(e){ touchStartX=e.touches[0].clientX; touchStartY=e.touches[0].clientY;}
+function snakeTouchEnd(e){
+let dx=e.changedTouches[0].clientX-touchStartX;
+let dy=e.changedTouches[0].clientY-touchStartY;
+if(Math.abs(dx)>Math.abs(dy)){
+if(dx>0&&snakeDir!=="LEFT")snakeDir="RIGHT";
+else if(dx<0&&snakeDir!=="RIGHT")snakeDir="LEFT";
+}else{
+if(dy>0&&snakeDir!=="UP")snakeDir="DOWN";
+else if(dy<0&&snakeDir!=="DOWN")snakeDir="UP";
+}
+}
+
+function drawSnake(){
+if(!snakeRunning)return;
+snakeCtx.fillStyle="#000"; snakeCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+snakeCtx.fillStyle="red"; snakeCtx.fillRect(snakeFood.x,snakeFood.y,20,20);
+let head={x:snake[0].x,y:snake[0].y};
+if(snakeDir==="UP")head.y-=20;
+if(snakeDir==="DOWN")head.y+=20;
+if(snakeDir==="LEFT")head.x-=20;
+if(snakeDir==="RIGHT")head.x+=20;
+if(head.x<0||head.y<0||head.x>=snakeCanvas.width||head.y>=snakeCanvas.height||snake.some(s=>s.x===head.x&&s.y===head.y)){snakeRunning=false; alert("Snake Game Over"); return;}
+snake.unshift(head);
+if(head.x===snakeFood.x&&head.y===snakeFood.y){snakeFood={x:Math.floor(Math.random()*20)*20,y:Math.floor(Math.random()*20)*20};}else{snake.pop();}
+snakeCtx.fillStyle="lime";snake.forEach(s=>snakeCtx.fillRect(s.x,s.y,20,20));
+}
+
+// ------------------- STAR WARS GAME -------------------
+const starCanvas=document.getElementById("starCanvas");
+const starCtx=starCanvas.getContext("2d");
+let starInterval, player, enemies, bullets, gameRunning, score=0, lives=3, level=1;
+
+// UI
+const starBtn=document.getElementById("starBtn");
+const progressBar=document.getElementById("progressBar");
+const scoreDisplay=document.getElementById("scoreDisplay");
+const livesDisplay=document.getElementById("livesDisplay");
+const levelDisplay=document.getElementById("levelDisplay");
+
+// Images
+const images=[{src:"moon.webp",obj:new Image()},{src:"spaceship.webp",obj:new Image()},{src:"enemy.webp",obj:new Image()}];
+let imagesLoaded=0;
+images.forEach(imgData=>{
+imgData.obj.src=imgData.src;
+imgData.obj.onload=()=>{
+imagesLoaded++;
+progressBar.style.width=((imagesLoaded/images.length)*100)+"%";
+if(imagesLoaded===images.length)starBtn.disabled=false;
+};
+});
+
+starBtn.addEventListener("click",startStarWars);
+
+// Start game
+function startStarWars(){
+clearInterval(starInterval);
+player={x:270,y:350,w:60,h:60};
+enemies=[];
+for(let i=0;i<3+level;i++){
+enemies.push({x:50+150*i,y:50,dir:1,fireTimer:Math.floor(Math.random()*100+50)});
+}
+bullets=[]; gameRunning=true; score=0; lives=3;
+updateUI();
+document.addEventListener("keydown",movePlayerStar);
+starCanvas.addEventListener("touchstart",starTouchStart);
+starCanvas.addEventListener("touchend",starTouchEnd);
+starInterval=setInterval(drawStarWars,50);
+}
+
+// Player controls
+function movePlayerStar(e){
+if(e.key==="ArrowLeft") player.x=Math.max(0,player.x-10);
+if(e.key==="ArrowRight") player.x=Math.min(starCanvas.width-player.w,player.x+10);
+if(e.key===" ") shoot();
+}
+
+// Buttons
+function moveLeft(){player.x=Math.max(0,player.x-10);}
+function moveRight(){player.x=Math.min(starCanvas.width-player.w,player.x+10);}
+function shoot(){bullets.push({x:player.x+player.w/2-5,y:player.y,w:10,h:20});}
+
+// Touch swipe
+let starTouchX=0;
+function starTouchStart(e){starTouchX=e.touches[0].clientX;}
+function starTouchEnd(e){
+let dx=e.changedTouches[0].clientX-starTouchX;
+if(Math.abs(dx)>30){ if(dx>0) moveRight(); else moveLeft();}
+else{shoot();}
+}
+
+// Draw Star Wars
+function drawStarWars(){
+if(!gameRunning)return;
+// background
+starCtx.drawImage(images[0].obj,0,0,starCanvas.width,starCanvas.height);
+// player
+starCtx.drawImage(images[1].obj,player.x,player.y,player.w,player.h);
+// enemies
+enemies.forEach(e=>{
+e.x+=e.dir*2;
+if(e.x<=0||e.x+50>=starCanvas.width)e.dir*=-1;
+starCtx.drawImage(images[2].obj,e.x,e.y,50,50);
+e.fireTimer--;
+if(e.fireTimer<=0){enemyBullets.push({x:e.x+25,y:e.y+50,w:5,h:15,dy:5}); e.fireTimer=Math.floor(Math.random()*100+50);}
+});
+
+// bullets
+bullets.forEach((b,i)=>{
+b.y-=15;
+starCtx.fillStyle="blue";
+starCtx.fillRect(b.x,b.y,b.w,b.h);
+enemies.forEach((en,j)=>{
+if(b.x<en.x+50&&b.x+b.w>en.x&&b.y<en.y+50&&b.y+b.h>en.y){enemies.splice(j,1); bullets.splice(i,1); score++; updateUI();}
+});
+});
+
+// enemy bullets
+enemyBullets.forEach((b,i)=>{
+b.y+=b.dy;
+starCtx.fillStyle="red";
+starCtx.fillRect(b.x,b.y,b.w,b.h);
+let playerRect={x:player.x,y:player.y,w:player.w,h:player.h};
+if(b.x<playerRect.x+playerRect.w&&b.x+b.w>playerRect.x&&b.y<playerRect.y+playerRect.h&&b.y+b.h>playerRect.y){lives--;enemyBullets.splice(i,1); updateUI();}
+});
+
+// check game over
+if(lives<=0){gameRunning=false; alert("Game Over"); return;}
+// level up
+if(enemies.length===0){level++; startStarWars();}
+}
+
+// Enemy bullets array
+let enemyBullets=[];
+
+// Update UI
+function updateUI(){
+scoreDisplay.textContent=score;
+livesDisplay.textContent=lives;
+levelDisplay.textContent=level;
+}
+
+</script>
+</body>
+</html>
